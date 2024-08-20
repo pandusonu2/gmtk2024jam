@@ -1,0 +1,674 @@
+[gd_scene load_steps=36 format=3 uid="uid://c7n3apbuxogsd"]
+
+[ext_resource type="Texture2D" uid="uid://cdb2v3272cpqe" path="res://assets/lvlbackground.png" id="1_16s1q"]
+[ext_resource type="Texture2D" uid="uid://tyqulivku7bs" path="res://assets/bridgeT.png" id="2_eob7d"]
+[ext_resource type="Texture2D" uid="uid://l1yd3u21v8e" path="res://assets/diagonalrocks.png" id="3_0mslj"]
+[ext_resource type="Texture2D" uid="uid://curc5q72n46bv" path="res://assets/circularstairs.png" id="4_lrveb"]
+[ext_resource type="Texture2D" uid="uid://y0p38msewi7t" path="res://assets/cavefill.png" id="4_o73ur"]
+[ext_resource type="Texture2D" uid="uid://dbogliqnokexy" path="res://assets/lavafill.png" id="5_4ckm1"]
+[ext_resource type="Texture2D" uid="uid://ba3a0cv2v0b30" path="res://assets/ladder.png" id="5_41f66"]
+[ext_resource type="Texture2D" uid="uid://chg6at2tyjqoc" path="res://assets/caveborder.png" id="6_0d8nw"]
+[ext_resource type="Texture2D" uid="uid://b2vwescewqb1" path="res://assets/waterfill.png" id="6_uumu0"]
+[ext_resource type="Texture2D" uid="uid://b8608i2vjg435" path="res://assets/caveextend.png" id="7_qhepp"]
+[ext_resource type="Texture2D" uid="uid://ckpwvcwlhwnrj" path="res://assets/Lava border.png" id="8_cikf2"]
+[ext_resource type="Texture2D" uid="uid://djtkqhqtkbldr" path="res://assets/lavaextent.png" id="9_dcd3d"]
+[ext_resource type="Texture2D" uid="uid://2lio3ocos8np" path="res://assets/waterborder.png" id="10_3imlq"]
+[ext_resource type="Texture2D" uid="uid://uws3x4vs7plq" path="res://assets/waterextend.png" id="11_q4101"]
+
+[sub_resource type="GDScript" id="GDScript_7vk5b"]
+script/source = "extends Node2D
+
+@onready var level: TileMap = $Level
+@onready var currentTile: TileMap = $CurrentTile
+@onready var dialougeBox: RichTextLabel = $dialougebox
+
+# Defined by levels
+@export var topleft = Vector2i(0,0)
+@export var bottomright = Vector2i(4,4)
+@export var goal = Vector2i(0, 0)
+@export var start = Vector2i(0, 0)
+@export var grid = []
+
+# Called when the node enters the scene tree for the first time.
+func _ready() -> void:
+	# This is where items are placed
+	level.add_layer(1)
+	# This is where you show the hover
+	level.add_layer(2)
+	# This is the layer where we show the walk animation
+	level.add_layer(3)
+	dialougeBox.clear()
+	cleanup()
+
+func _input(event):
+	level.clear_layer(2)
+	if event is InputEventMouseMotion:
+		var tile: Vector2i = level.local_to_map(event.position - level.position)
+		if (outsideLimits(tile)):
+			return
+		for i in range(5):
+			for j in range(5):
+				var src = currentTile.get_cell_source_id(0, Vector2i(i, j))
+				var alt = currentTile.get_cell_alternative_tile(0, Vector2i(i, j))
+				level.set_cell(2, Vector2i(i, j) + tile, src, Vector2i(0, 0), alt + 4)
+
+func _physics_process(delta: float) -> void:
+	if (Input.is_action_just_pressed(\"mb_left\")):
+		var tile: Vector2i = level.local_to_map(get_global_mouse_position() - level.position)
+		if (outsideLimits(tile)):
+			return
+		superimposeCurrentTileOnMap(tile)
+	check_solution()
+
+func outsideLimits(vec: Vector2i) -> bool:
+	if (vec.x < topleft.x || vec.x > bottomright.x || vec.y < topleft.y || vec.y > bottomright.y):
+		return true
+	return false
+
+func superimposeCurrentTileOnMap(pos: Vector2i):
+	dialougeBox.clear()
+	var used = currentTile.get_used_cells(0)
+	for i in range(5):
+		for j in range(5):
+			var src = currentTile.get_cell_source_id(0, Vector2i(i, j))
+			if src != -1:
+				var tile_add_poss = pos + Vector2i(i, j)
+				if (outsideLimits(tile_add_poss)):
+					dialougeBox.add_text(\"Don't try to change HELL\")
+					return
+	var currentTiles = currentTile.get_used_cells(0)
+	for tile in currentTiles:
+		level.set_cell(1, pos + tile, currentTile.get_cell_source_id(0, tile), Vector2i(0,0), currentTile.get_cell_alternative_tile(0, tile))
+
+func check_solution():
+	# Check solution
+	var source = start
+	var checked = []
+	checked.resize(100)
+	checked.fill(false)
+	var parent = []
+	parent.resize(100)
+	parent.fill(Vector2i(-1, -1))
+	parent[vtoi(source)] = source
+	var visited = [source, source + dToV(0), source + dToV(1), source + dToV(2), source + dToV(3)]
+	for i in range(5):
+		var tt = source + dToV(i)
+		visited.append(tt)
+		parent[vtoi(tt)] = source
+	while visited.size() != 0:
+		var pop = visited.pop_front()
+		visited[vtoi(pop)] = true
+		var src_pop = level.get_cell_source_id(1, pop)
+		var alt_pop = level.get_cell_alternative_tile(1, pop)
+		var nextposs = get_nextposs(src_pop, alt_pop, pop)
+		for next_loc in nextposs:
+			var src = level.get_cell_source_id(1, next_loc)
+			var alt = level.get_cell_alternative_tile(1, next_loc)
+			if !checked[vtoi(next_loc)]:
+				if (canMoveThere(src, alt, next_loc)):
+					checked[vtoi(next_loc)] = true
+					parent[vtoi(next_loc)] = pop
+					visited.append(next_loc)
+		
+	if (checked[vtoi(goal)]):
+		dialougeBox.add_text(\"Lets move on...\")
+	# If solution works, walk animation, save build, next level
+
+func get_nextposs(src: int, alt: int, vec: Vector2i) -> Array:
+	match src:
+		0: match alt:
+			1: return [vec + dToV(0), vec + dToV(1), vec + dToV(2)]
+			2: return [vec + dToV(0), vec + dToV(1), vec + dToV(3)]
+			3: return [vec + dToV(0), vec + dToV(2), vec + dToV(3)]
+			4: return [vec + dToV(1), vec + dToV(2), vec + dToV(3)]
+		1: match alt:
+			1: return [vec + dToV(0), vec + dToV(2)]
+			2: return [vec + dToV(0), vec + dToV(3)]
+			3: return [vec + dToV(1), vec + dToV(3)]
+			4: return [vec + dToV(1), vec + dToV(2)]
+		2: match alt:
+			1: return [vec + dToV(3), vec + dToV(0)]
+			2: return [vec + dToV(3), vec + dToV(1)]
+			3: return [vec + dToV(2), vec + dToV(1)]
+			4: return [vec + dToV(2), vec + dToV(0)]
+	return []
+
+func canMoveThere(src:int, alt: int, dir: int) -> bool:
+	match src:
+		0: pass
+		1: pass
+		2: pass
+	return false
+
+func vtoi(vec: Vector2i) -> int:
+	return vec.x * 10 + vec.y
+
+func dToV(dir: int) -> Vector2i:
+	match dir:
+		# D
+		0: return Vector2i(0, 1)
+		# U
+		1: return Vector2i(0, -1)
+		# R
+		2: return Vector2i(1, 0)
+		# L
+		3: return Vector2i(-1, 0)
+		_: return  Vector2i(0, 0)
+
+func _on_rotate_pressed() -> void:
+	var current_source = []
+	var current = []
+	for i in range(5):
+		var temp = []
+		var temp_source = []
+		for j in range(5):
+			temp.append(currentTile.get_cell_alternative_tile(0, Vector2i(i, j)))
+			temp_source.append(currentTile.get_cell_source_id(0, Vector2i(i, j)))
+		current.append(temp)
+		current_source.append(temp_source)
+	for i in range(3):
+		for j in range(i, 5 - i - 1):
+			var temp = current[i][j]
+			current[i][j] = current[5 - 1 - j][i];
+			current[5 - 1 - j][i] = current[5 - 1 - i][5 - 1 - j];
+			current[5 - 1 - i][5 - 1 - j] = current[j][5 - 1 - i];
+			current[j][5 - 1 - i] = temp;
+			
+			temp = current_source[i][j]
+			current_source[i][j] = current_source[5 - 1 - j][i];
+			current_source[5 - 1 - j][i] = current_source[5 - 1 - i][5 - 1 - j];
+			current_source[5 - 1 - i][5 - 1 - j] = current_source[j][5 - 1 - i];
+			current_source[j][5 - 1 - i] = temp;
+	# 1 -> 3; 3 -> 2; 2 -> 4; 4 -> 1
+	for i in range(5):
+		for j in range(5):
+			var val = helper_rotate(current_source[i][j], current[i][j])
+			currentTile.set_cell(0, Vector2i(i, j), current_source[i][j], Vector2i(0, 0), val)
+	cleanup()
+
+func _on_flip_pressed() -> void:
+	for i in range(2):
+		for j in range(5):
+			var left_cell = Vector2i(i, j)
+			var right_cell = Vector2i(4 - i, j)
+			var left_source = currentTile.get_cell_source_id(0, left_cell)
+			var left_alt = currentTile.get_cell_alternative_tile(0, left_cell)
+			var right_source = currentTile.get_cell_source_id(0, right_cell)
+			var right_alt = currentTile.get_cell_alternative_tile(0, right_cell)
+			currentTile.set_cell(0, left_cell, right_source, Vector2i(0, 0), flip_helper(right_source, right_alt))
+			currentTile.set_cell(0, right_cell, left_source, Vector2i(0, 0), flip_helper(left_source, left_alt))
+	for i in range(5):
+		currentTile.set_cell(0, Vector2i(2, i), 
+			currentTile.get_cell_source_id(0, Vector2i(2, i)), 
+			Vector2i(0, 0), 
+			flip_helper(currentTile.get_cell_source_id(0, Vector2i(2, i)), currentTile.get_cell_alternative_tile(0, Vector2i(2, i))))
+	cleanup()
+
+func _on_flip_v_pressed() -> void:
+	for i in range(5):
+		for j in range(2):
+			var left_cell = Vector2i(i, j)
+			var right_cell = Vector2i(i, 4 - j)
+			var left_source = currentTile.get_cell_source_id(0, left_cell)
+			var left_alt = currentTile.get_cell_alternative_tile(0, left_cell)
+			var right_source = currentTile.get_cell_source_id(0, right_cell)
+			var right_alt = currentTile.get_cell_alternative_tile(0, right_cell)
+			currentTile.set_cell(0, left_cell, right_source, Vector2i(0, 0), flip_helperv(right_source, right_alt))
+			currentTile.set_cell(0, right_cell, left_source, Vector2i(0, 0), flip_helperv(left_source, left_alt))
+	for i in range(5):
+		currentTile.set_cell(0, Vector2i(i, 2), 
+			currentTile.get_cell_source_id(0, Vector2i(i, 2)), 
+			Vector2i(0, 0), 
+			flip_helperv(currentTile.get_cell_source_id(0, Vector2i(i, 2)),currentTile.get_cell_alternative_tile(0, Vector2i(i, 2))))
+	cleanup()
+
+func cleanup():
+	var min = Vector2i(5, 5)
+	for curr in currentTile.get_used_cells(0):
+		min.x = min(curr.x, min.x)
+		min.y = min(curr.y, min.y)
+	for i in range(5):
+		for j in range(5):
+			currentTile.set_cell(0, Vector2i(i, j), currentTile.get_cell_source_id(0, Vector2i(i + min.x, j + min.y)), Vector2i(0, 0), currentTile.get_cell_alternative_tile(0, Vector2i(i + min.x, j + min.y)))
+
+func flip_helper(src: int, val: int) -> int:
+	match src:
+		0:match val:
+			1: return 2
+			2: return 1
+			3: return 3
+			4: return 4
+			_: return -1
+		1:match val:
+			1: return 2
+			2: return 1
+			3: return 3
+			4: return 4
+			_: return -1
+		2: match val:
+			1: return 4
+			2: return 3
+			3: return 2
+			4: return 1
+			_: return -1
+		_: return -1
+	
+func flip_helperv(src: int, val: int) -> int:
+	match src:
+		0:match val:
+			1: return 1
+			2: return 2
+			3: return 4
+			4: return 3
+			_: return -1
+		1:match val:
+			1: return 4
+			2: return 3
+			3: return 2
+			4: return 1
+			_: return -1
+		2: match val:
+			1: return 2
+			2: return 1
+			3: return 4
+			4: return 3
+			_: return -1
+		_: return -1
+
+func helper_rotate(src: int, val: int) -> int:
+	match src:
+		0:match val:
+			1: return 4
+			4: return 2
+			2: return 3
+			3: return 1
+			_: return -1
+		1:match val:
+			1: return 4
+			4: return 3
+			3: return 2
+			2: return 1
+			_: return -1
+		2: match val:
+			1: return 4
+			4: return 3
+			3: return 2
+			2: return 1
+			_: return -1
+		_: return -1
+"
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_02vo3"]
+texture = ExtResource("2_eob7d")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/3 = 3
+0:0/3/transpose = true
+0:0/4 = 4
+0:0/4/flip_h = true
+0:0/4/flip_v = true
+0:0/4/transpose = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/transpose = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_h = true
+0:0/8/flip_v = true
+0:0/8/transpose = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_6eqll"]
+texture = ExtResource("3_0mslj")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/2/transpose = true
+0:0/3 = 3
+0:0/3/flip_h = true
+0:0/3/flip_v = true
+0:0/4 = 4
+0:0/4/flip_v = true
+0:0/4/transpose = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/transpose = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/flip_h = true
+0:0/7/flip_v = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_v = true
+0:0/8/transpose = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_y3n2g"]
+texture = ExtResource("4_o73ur")
+texture_region_size = Vector2i(72, 72)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ltdyy"]
+texture = ExtResource("5_4ckm1")
+texture_region_size = Vector2i(72, 72)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_tvyua"]
+texture = ExtResource("6_uumu0")
+texture_region_size = Vector2i(72, 72)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_4ta5g"]
+texture = ExtResource("4_lrveb")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/1/flip_v = true
+0:0/1/transpose = true
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/2/transpose = true
+0:0/3 = 3
+0:0/3/flip_h = true
+0:0/3/flip_v = true
+0:0/4 = 4
+0:0/4/flip_v = true
+0:0/4/transpose = true
+0:0/5 = 5
+0:0/5/flip_h = true
+0:0/5/flip_v = true
+0:0/5/transpose = true
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/transpose = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/flip_h = true
+0:0/7/flip_v = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_v = true
+0:0/8/transpose = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_yvsmk"]
+texture = ExtResource("5_41f66")
+texture_region_size = Vector2i(72, 72)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_roy2n"]
+texture = ExtResource("6_0d8nw")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 5
+0:0/0 = 0
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/2 = 2
+0:0/2/transpose = true
+0:0/3 = 3
+0:0/3/flip_v = true
+0:0/3/transpose = true
+0:0/4 = 4
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_legsw"]
+texture = ExtResource("7_qhepp")
+texture_region_size = Vector2i(72, 72)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_6o08l"]
+texture = ExtResource("8_cikf2")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 5
+0:0/0 = 0
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/2 = 2
+0:0/2/transpose = true
+0:0/3 = 3
+0:0/3/flip_v = true
+0:0/3/transpose = true
+0:0/4 = 4
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_gt6d6"]
+texture = ExtResource("9_dcd3d")
+texture_region_size = Vector2i(72, 72)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_hen5k"]
+texture = ExtResource("10_3imlq")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 5
+0:0/0 = 0
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/2 = 2
+0:0/2/transpose = true
+0:0/3 = 3
+0:0/3/flip_v = true
+0:0/3/transpose = true
+0:0/4 = 4
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7o1j1"]
+texture = ExtResource("11_q4101")
+texture_region_size = Vector2i(72, 72)
+0:0/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_3dt8t"]
+tile_size = Vector2i(72, 72)
+sources/0 = SubResource("TileSetAtlasSource_02vo3")
+sources/1 = SubResource("TileSetAtlasSource_6eqll")
+sources/2 = SubResource("TileSetAtlasSource_4ta5g")
+sources/3 = SubResource("TileSetAtlasSource_yvsmk")
+sources/4 = SubResource("TileSetAtlasSource_roy2n")
+sources/5 = SubResource("TileSetAtlasSource_legsw")
+sources/6 = SubResource("TileSetAtlasSource_6o08l")
+sources/7 = SubResource("TileSetAtlasSource_gt6d6")
+sources/8 = SubResource("TileSetAtlasSource_hen5k")
+sources/9 = SubResource("TileSetAtlasSource_7o1j1")
+sources/10 = SubResource("TileSetAtlasSource_y3n2g")
+sources/11 = SubResource("TileSetAtlasSource_ltdyy")
+sources/12 = SubResource("TileSetAtlasSource_tvyua")
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1lp6q"]
+texture = ExtResource("2_eob7d")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/3 = 3
+0:0/3/transpose = true
+0:0/4 = 4
+0:0/4/flip_h = true
+0:0/4/flip_v = true
+0:0/4/transpose = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/transpose = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_h = true
+0:0/8/flip_v = true
+0:0/8/transpose = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7nw0r"]
+texture = ExtResource("3_0mslj")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/2/transpose = true
+0:0/3 = 3
+0:0/3/flip_h = true
+0:0/3/flip_v = true
+0:0/4 = 4
+0:0/4/flip_v = true
+0:0/4/transpose = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/transpose = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/flip_h = true
+0:0/7/flip_v = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_v = true
+0:0/8/transpose = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7nvfv"]
+texture = ExtResource("4_lrveb")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 17
+0:0/0 = 0
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/1/flip_v = true
+0:0/1/transpose = true
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/2/transpose = true
+0:0/3 = 3
+0:0/3/flip_h = true
+0:0/3/flip_v = true
+0:0/4 = 4
+0:0/4/flip_v = true
+0:0/4/transpose = true
+0:0/5 = 5
+0:0/5/flip_h = true
+0:0/5/flip_v = true
+0:0/5/transpose = true
+0:0/5/modulate = Color(0.741385, 0.741385, 0.741385, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/transpose = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/flip_h = true
+0:0/7/flip_v = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_v = true
+0:0/8/transpose = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSet" id="TileSet_2w6e1"]
+tile_size = Vector2i(72, 72)
+sources/0 = SubResource("TileSetAtlasSource_1lp6q")
+sources/1 = SubResource("TileSetAtlasSource_7nw0r")
+sources/2 = SubResource("TileSetAtlasSource_7nvfv")
+
+[sub_resource type="Theme" id="Theme_7hdy0"]
+
+[sub_resource type="Theme" id="Theme_f5y26"]
+default_font_size = 0
+
+[node name="LevelScrn" type="Node2D"]
+script = SubResource("GDScript_7vk5b")
+
+[node name="Lvlbackground" type="Sprite2D" parent="."]
+position = Vector2(640, 373)
+texture = ExtResource("1_16s1q")
+
+[node name="Level" type="TileMap" parent="."]
+light_mask = 3
+visibility_layer = 3
+position = Vector2(226, 36)
+tile_set = SubResource("TileSet_3dt8t")
+format = 2
+layer_0/tile_data = PackedInt32Array(458755, 6, 196608, 458756, 6, 196608, 327685, 11, 0, 327686, 6, 65536, 262149, 11, 0, 196613, 11, 0, 131077, 11, 0, 131076, 11, 0, 393222, 6, 65536, 458758, 6, 65536, 458759, 7, 0, 393223, 7, 0, 131079, 7, 0, 131078, 6, 65536, 327687, 7, 0, 262151, 7, 0, 458757, 6, 196608, 196615, 7, 0, 196614, 6, 65536, 262150, 6, 65536, 0, 7, 0, 1, 7, 0, 2, 7, 0, 3, 7, 0, 4, 7, 0, 5, 7, 0, 6, 7, 0, 7, 7, 0, 65536, 7, 0, 131072, 7, 0, 196608, 7, 0, 262144, 7, 0, 327680, 7, 0, 393216, 7, 0, 458752, 7, 0, 524288, 7, 0, 524289, 7, 0, 524290, 7, 0, 524291, 7, 0, 524292, 7, 0, 524293, 7, 0, 524294, 7, 0, 524295, 7, 0, 65543, 7, 0, 65537, 6, 262144, 131074, 11, 0, 196611, 11, 0, 262148, 11, 0, 458754, 6, 196608, 458753, 6, 262144, 131073, 6, 262144, 196609, 6, 262144, 262145, 6, 262144, 327681, 6, 262144, 393217, 6, 262144, 65542, 6, 65536, 65538, 6, 131072, 65539, 6, 131072, 65540, 6, 131072, 65541, 6, 131072, 131075, 11, 0, 393220, 11, 0, 393219, 11, 0, 393218, 11, 0, 327682, 11, 0, 262146, 11, 0, 196610, 11, 0, 262147, 11, 0, 327684, 11, 0, 327683, 11, 0, 196612, 11, 0, 393221, 11, 0, 8, 7, 0, 65544, 7, 0, 131080, 7, 0, 196616, 7, 0, 262152, 7, 0, 327688, 7, 0, 393224, 7, 0, 458760, 7, 0, 524296, 7, 0)
+
+[node name="CurrentTile" type="TileMap" parent="."]
+position = Vector2(885, 105)
+tile_set = SubResource("TileSet_2w6e1")
+format = 2
+layer_0/tile_data = PackedInt32Array(0, 0, 65536)
+
+[node name="w3l3" type="Button" parent="."]
+offset_left = 120.0
+offset_top = 33.0
+offset_right = 177.0
+offset_bottom = 130.0
+
+[node name="w3l2" type="Button" parent="."]
+offset_left = 83.0
+offset_top = 88.0
+offset_right = 106.0
+offset_bottom = 204.0
+
+[node name="w3l1" type="Button" parent="."]
+offset_left = 118.0
+offset_top = 138.0
+offset_right = 161.0
+offset_bottom = 206.0
+
+[node name="dialougebox" type="RichTextLabel" parent="."]
+self_modulate = Color(0, 0, 0, 1)
+offset_left = 922.0
+offset_top = 510.0
+offset_right = 1234.0
+offset_bottom = 584.0
+theme = SubResource("Theme_7hdy0")
+text = "sda"
+
+[node name="Title" type="RichTextLabel" parent="."]
+modulate = Color(1, 0.311596, 0.326298, 1)
+self_modulate = Color(0.0022514, 0.00184782, 0.000678602, 1)
+offset_left = 913.0
+offset_top = 55.0
+offset_right = 1225.0
+offset_bottom = 83.0
+theme = SubResource("Theme_f5y26")
+text = "        Current tile"
+
+[node name="Rotate" type="Button" parent="."]
+offset_left = 1088.0
+offset_top = 45.0
+offset_right = 1142.0
+offset_bottom = 82.0
+text = "Rotate"
+
+[node name="Flip" type="Button" parent="."]
+offset_left = 1156.0
+offset_top = 47.0
+offset_right = 1219.0
+offset_bottom = 83.0
+text = "Flip H"
+
+[node name="FlipV" type="Button" parent="."]
+offset_left = 1226.0
+offset_top = 46.0
+offset_right = 1276.0
+offset_bottom = 81.0
+text = "Flip V"
+
+[connection signal="pressed" from="Rotate" to="." method="_on_rotate_pressed"]
+[connection signal="pressed" from="Flip" to="." method="_on_flip_pressed"]
+[connection signal="pressed" from="FlipV" to="." method="_on_flip_v_pressed"]

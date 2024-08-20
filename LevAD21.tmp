@@ -1,0 +1,300 @@
+[gd_scene load_steps=17 format=3 uid="uid://c7n3apbuxogsd"]
+
+[ext_resource type="Texture2D" uid="uid://cdb2v3272cpqe" path="res://assets/lvlbackground.png" id="1_16s1q"]
+[ext_resource type="Texture2D" uid="uid://tyqulivku7bs" path="res://assets/bridgeT.png" id="2_eob7d"]
+[ext_resource type="Texture2D" uid="uid://l1yd3u21v8e" path="res://assets/diagonalrocks.png" id="3_0mslj"]
+[ext_resource type="Texture2D" uid="uid://curc5q72n46bv" path="res://assets/circularstairs.png" id="4_lrveb"]
+[ext_resource type="Texture2D" uid="uid://ba3a0cv2v0b30" path="res://assets/ladder.png" id="5_41f66"]
+
+[sub_resource type="GDScript" id="GDScript_7vk5b"]
+script/source = "extends Node2D
+
+@onready var level: TileMap = $Level
+@onready var currentTile: TileMap = $CurrentTile
+@onready var dialougeBox: RichTextLabel = $dialougebox
+
+# Defined by levels
+@export var topleft = Vector2(0,0)
+@export var bottomright = Vector2(4,4)
+@export var grid = []
+
+var currentMousePosition = Vector2(0,0)
+
+# Called when the node enters the scene tree for the first time.
+func _ready() -> void:
+	pass
+
+func _input(event):
+	if event is InputEventMouseMotion:
+		currentMousePosition = event.position
+		
+
+func _physics_process(delta: float) -> void:
+	if (Input.is_action_just_pressed(\"mb_left\")):
+		var tile: Vector2i = level.local_to_map(get_global_mouse_position() - level.position)
+		if (tile.x < topleft.x || tile.x > bottomright.x || tile.y < topleft.y || tile.y > bottomright.y):
+			return
+		superimposeCurrentTileOnMap(tile)
+	
+	check_solution()
+
+func superimposeCurrentTileOnMap(pos: Vector2i):
+	var currentTiles = currentTile.get_used_cells(0)
+	for tile in currentTiles:
+		level.set_cell(1, pos + tile, currentTile.get_cell_source_id(0, tile), Vector2i(0,0))
+
+func check_solution():
+	pass
+
+
+func _on_button_pressed() -> void:
+	print(level.tile_set.get_source_count())
+"
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_02vo3"]
+texture = ExtResource("2_eob7d")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/3 = 3
+0:0/3/transpose = true
+0:0/4 = 4
+0:0/4/flip_h = true
+0:0/4/flip_v = true
+0:0/4/transpose = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/transpose = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_h = true
+0:0/8/flip_v = true
+0:0/8/transpose = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_6eqll"]
+texture = ExtResource("3_0mslj")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/3 = 3
+0:0/3/flip_v = true
+0:0/4 = 4
+0:0/4/flip_h = true
+0:0/4/flip_v = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/flip_v = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_h = true
+0:0/8/flip_v = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_4ta5g"]
+texture = ExtResource("4_lrveb")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/3 = 3
+0:0/3/flip_v = true
+0:0/4 = 4
+0:0/4/flip_h = true
+0:0/4/flip_v = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/flip_v = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_h = true
+0:0/8/flip_v = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_yvsmk"]
+texture = ExtResource("5_41f66")
+texture_region_size = Vector2i(72, 72)
+0:0/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_3dt8t"]
+tile_size = Vector2i(72, 72)
+sources/0 = SubResource("TileSetAtlasSource_02vo3")
+sources/1 = SubResource("TileSetAtlasSource_6eqll")
+sources/2 = SubResource("TileSetAtlasSource_4ta5g")
+sources/3 = SubResource("TileSetAtlasSource_yvsmk")
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1lp6q"]
+texture = ExtResource("2_eob7d")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/3 = 3
+0:0/3/transpose = true
+0:0/4 = 4
+0:0/4/flip_h = true
+0:0/4/flip_v = true
+0:0/4/transpose = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/transpose = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_h = true
+0:0/8/flip_v = true
+0:0/8/transpose = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7nw0r"]
+texture = ExtResource("3_0mslj")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 9
+0:0/0 = 0
+0:0/1 = 1
+0:0/2 = 2
+0:0/2/flip_h = true
+0:0/3 = 3
+0:0/3/flip_v = true
+0:0/4 = 4
+0:0/4/flip_h = true
+0:0/4/flip_v = true
+0:0/5 = 5
+0:0/5/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/6 = 6
+0:0/6/flip_h = true
+0:0/6/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/7 = 7
+0:0/7/flip_v = true
+0:0/7/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/8 = 8
+0:0/8/flip_h = true
+0:0/8/flip_v = true
+0:0/8/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7nvfv"]
+texture = ExtResource("4_lrveb")
+texture_region_size = Vector2i(72, 72)
+0:0/next_alternative_id = 17
+0:0/0 = 0
+0:0/9 = 9
+0:0/10 = 10
+0:0/10/flip_h = true
+0:0/11 = 11
+0:0/11/flip_v = true
+0:0/12 = 12
+0:0/12/flip_h = true
+0:0/12/flip_v = true
+0:0/13 = 13
+0:0/13/modulate = Color(0.741385, 0.741385, 0.741385, 1)
+0:0/14 = 14
+0:0/14/flip_h = true
+0:0/14/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/15 = 15
+0:0/15/flip_v = true
+0:0/15/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+0:0/16 = 16
+0:0/16/flip_h = true
+0:0/16/flip_v = true
+0:0/16/modulate = Color(0.741176, 0.741176, 0.741176, 1)
+
+[sub_resource type="TileSet" id="TileSet_2w6e1"]
+tile_size = Vector2i(72, 72)
+sources/0 = SubResource("TileSetAtlasSource_1lp6q")
+sources/1 = SubResource("TileSetAtlasSource_7nw0r")
+sources/2 = SubResource("TileSetAtlasSource_7nvfv")
+
+[sub_resource type="Theme" id="Theme_f5y26"]
+default_font_size = 0
+
+[node name="LevelScrn" type="Node2D"]
+script = SubResource("GDScript_7vk5b")
+
+[node name="Lvlbackground" type="Sprite2D" parent="."]
+position = Vector2(640, 373)
+texture = ExtResource("1_16s1q")
+
+[node name="Level" type="TileMap" parent="."]
+light_mask = 3
+visibility_layer = 3
+position = Vector2(226, 36)
+tile_set = SubResource("TileSet_3dt8t")
+format = 2
+layer_0/tile_data = PackedInt32Array(458755, 2, 0, 458756, 2, 0, 327685, 2, 0, 327686, 1, 0, 262149, 1, 0, 196613, 1, 0, 131077, 1, 0, 131076, 1, 0, 393222, 2, 0, 458758, 2, 0, 458759, 2, 0, 393223, 2, 0, 131079, 2, 0, 131078, 1, 0, 327687, 2, 0, 262151, 2, 0, 458757, 2, 0, 196615, 2, 0, 196614, 1, 0, 262150, 1, 0, 0, 2, 0, 1, 2, 0, 2, 2, 0, 3, 2, 0, 4, 2, 0, 5, 2, 0, 6, 2, 0, 7, 2, 0, 65536, 2, 0, 131072, 2, 0, 196608, 2, 0, 262144, 2, 0, 327680, 2, 0, 393216, 2, 0, 458752, 2, 0, 524288, 2, 0, 524289, 2, 0, 524290, 2, 0, 524291, 2, 0, 524292, 2, 0, 524293, 2, 0, 524294, 2, 0, 524295, 2, 0, 65543, 2, 0, 65537, 2, 0, 131074, 2, 0, 196611, 2, 0, 262148, 2, 0, 458754, 2, 0, 458753, 2, 0)
+
+[node name="CurrentTile" type="TileMap" parent="."]
+position = Vector2(885, 105)
+tile_set = SubResource("TileSet_2w6e1")
+format = 2
+layer_0/tile_data = PackedInt32Array(0, 0, 0, 1, 0, 0, 2, 0, 0, 4, 0, 0, 65540, 0, 0, 65538, 1, 0, 65536, 0, 0, 131072, 0, 0, 131076, 0, 0, 196608, 0, 0, 262144, 0, 0, 262148, 0, 0)
+
+[node name="w3l3" type="Button" parent="."]
+offset_left = 120.0
+offset_top = 33.0
+offset_right = 177.0
+offset_bottom = 130.0
+
+[node name="w3l2" type="Button" parent="."]
+offset_left = 83.0
+offset_top = 88.0
+offset_right = 106.0
+offset_bottom = 204.0
+
+[node name="w3l1" type="Button" parent="."]
+offset_left = 118.0
+offset_top = 138.0
+offset_right = 161.0
+offset_bottom = 206.0
+
+[node name="dialougebox" type="RichTextLabel" parent="."]
+offset_left = 905.0
+offset_top = 502.0
+offset_right = 1234.0
+offset_bottom = 584.0
+
+[node name="Title" type="RichTextLabel" parent="."]
+offset_left = 913.0
+offset_top = 39.0
+offset_right = 1225.0
+offset_bottom = 95.0
+theme = SubResource("Theme_f5y26")
+text = "Your current tile"
+
+[node name="Rotate" type="Button" parent="."]
+offset_left = 1088.0
+offset_top = 45.0
+offset_right = 1142.0
+offset_bottom = 82.0
+text = "R"
+
+[node name="Flip" type="Button" parent="."]
+offset_left = 1164.0
+offset_top = 41.0
+offset_right = 1229.0
+offset_bottom = 82.0
+text = "F"
